@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《红楼梦》人物关系互动探索</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices:
+        - Jia Clan Table: Report Info -> Jia family members, generations, affiliations. Goal -> Provide quick reference to family structure. Viz/Presentation -> Styled HTML table. Interaction -> None, focus on readability. Justification -> Direct, clear presentation of factual data. Library/Method -> HTML/Tailwind.
+        - Core Figures Table: Report Info -> Key details of Baoyu, Daiyu, Baochai, Xifeng, Jia Mu. Goal -> Summarize core characters. Viz/Presentation -> Styled HTML table. Interaction -> None. Justification -> Concise summary. Library/Method -> HTML/Tailwind.
+        - Maids Comparison Table: Report Info -> Details of Xiren, Qingwen, Yuanyang, Ping'er, Zijuan. Goal -> Compare key maids. Viz/Presentation -> Styled HTML table. Interaction -> None. Justification -> Easy comparison. Library/Method -> HTML/Tailwind.
+        - Maids' Fates Chart: Report Info -> Qualitative descriptions of maids' fates. Goal -> Visually represent the tragic trend. Viz/Presentation -> Chart.js Bar Chart (Categories: 悲剧身亡, 嫁出/尘缘未了, 存活但不幸, 出家/寻求解脱). Interaction -> Tooltips. Justification -> Visual summary of outcomes. Library/Method -> Chart.js.
+        - Key Event Sections: Report Info -> Detailed descriptions of events. Goal -> Allow focused deep-dives. Viz/Presentation -> Dedicated content sections. Interaction -> Navigation to section. Justification -> Structured presentation of event impacts. Library/Method -> HTML/Tailwind/JS for navigation.
+        - ✨Character Relationship Interpretation (LLM)✨: Report Info -> Any two characters. Goal -> Provide dynamic, detailed explanation of their relationship. Viz/Presentation -> Text output from LLM. Interaction -> Dropdown selection, button click. Justification -> Enhances interactive learning beyond static text. Library/Method -> Gemini API (gemini-2.0-flash).
+        - ✨Event Impact Analysis (LLM)✨: Report Info -> Key events. Goal -> Provide dynamic, detailed analysis of event impact. Viz/Presentation -> Text output from LLM. Interaction -> Dropdown selection, button click. Justification -> Deepens understanding of narrative causality. Library/Method -> Gemini API (gemini-2.0-flash).
+        - NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #fdf6f6 0%, #f7fafc 100%);
+            color: #3f3f46;
+        }
+        .container {
+            max-width: 900px;
+        }
+        header {
+            background: linear-gradient(90deg, #f43f5e 0%, #fbbf24 100%);
+            border-radius: 1rem;
+            padding: 2rem 1rem 1.5rem 1rem;
+            box-shadow: 0 4px 24px 0 rgba(244,63,94,0.08);
+        }
+        header h1 {
+            color: #fff;
+            text-shadow: 0 2px 8px rgba(244,63,94,0.15);
+        }
+        header p {
+            color: #fef3c7;
+        }
+        nav {
+            background: #fff;
+            box-shadow: 0 2px 8px 0 rgba(244,63,94,0.06);
+            border-radius: 0.75rem;
+        }
+        .nav-button {
+            @apply px-3 py-2 text-sm font-medium rounded-md transition-colors;
+            color: #be123c;
+            background: transparent;
+            border: none;
+            margin: 0 0.25rem;
+            cursor: pointer;
+        }
+        .nav-button:hover, .nav-button.active {
+            background: linear-gradient(90deg, #f43f5e 0%, #fbbf24 100%);
+            color: #fff;
+            box-shadow: 0 2px 8px 0 rgba(244,63,94,0.08);
+        }
+        .nav-button.active {
+            font-weight: bold;
+        }
+        .content-section {
+            @apply p-4 md:p-6 bg-white rounded-xl shadow-lg;
+            margin-bottom: 2rem;
+        }
+        .table-container {
+            @apply overflow-x-auto shadow-md rounded-lg;
+            background: #f9fafb;
+            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        table {
+            @apply min-w-full divide-y divide-stone-200;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: #fff;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        thead th {
+            @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+            background: #fef2f2;
+            color: #be123c;
+            border-bottom: 2px solid #fbbf24;
+        }
+        tbody td {
+            @apply px-4 py-3 text-sm;
+            color: #3f3f46;
+            background: #fff;
+        }
+        tbody tr:nth-child(even) td {
+            background: #f9fafb;
+        }
+        h2 {
+            @apply text-2xl font-bold mb-4 border-b-2 pb-2;
+            color: #be123c;
+            border-color: #fbbf24;
+        }
+        h3 {
+            @apply text-xl font-semibold mt-6 mb-3;
+            color: #f43f5e;
+        }
+        p {
+            @apply text-base leading-relaxed mb-3;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 320px;
+            background: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 8px 0 rgba(244,63,94,0.06);
+            padding: 1rem;
+        }
+        @media (max-width: 640px) {
+            .content-section, .table-container, .chart-container {
+                padding: 1rem;
+                border-radius: 0.5rem;
+            }
+            table, thead, tbody, th, td, tr {
+                font-size: 0.95rem;
+            }
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .prose-custom p { @apply mb-4 leading-relaxed; }
+        .prose-custom ul { @apply list-disc list-inside mb-4 pl-4; }
+        .prose-custom li { @apply mb-2; }
+        .prose-custom strong { @apply font-semibold text-rose-600; }
+        .prose-custom blockquote {
+            @apply border-l-4 pl-4 italic my-4;
+            border-color: #fbbf24;
+            color: #be123c;
+            background: #fef9c3;
+            border-radius: 0.5rem;
+        }
+        .llm-section {
+            @apply p-4 rounded-lg mt-6 border;
+            background: #fef2f2;
+            border-color: #fbbf24;
+        }
+        .llm-output {
+            @apply p-3 rounded-md text-sm mt-3 border;
+            background: #f9fafb;
+            color: #3f3f46;
+            border-color: #fbbf24;
+            min-height: 80px;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #f43f5e;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        footer {
+            margin-top: 3rem;
+            color: #a1a1aa;
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-stone-800">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-rose-700">《红楼梦》人物关系互动探索</h1>
+            <p class="text-lg text-stone-600 mt-2">深度解析贾府兴衰与人物命运</p>
+        </header>
+
+        <nav class="bg-white shadow-md rounded-lg mb-8 p-2">
+            <div class="flex flex-wrap justify-center space-x-1">
+                <button class="nav-button active" onclick="showTab('tab-intro')">引言</button>
+                <button class="nav-button" onclick="showTab('tab-jia-clan')">贾府世家</button>
+                <button class="nav-button" onclick="showTab('tab-core-figures')">核心人物</button>
+                <button class="nav-button" onclick="showTab('tab-master-servant')">主仆之间</button>
+                <button class="nav-button" onclick="showTab('tab-power-society')">权力与社会</button>
+                <button class="nav-button" onclick="showTab('tab-key-events')">关键事件</button>
+                <button class="nav-button" onclick="showTab('tab-symbolism')">寓意与批判</button>
+                <button class="nav-button" onclick="showTab('tab-conclusion')">结语</button>
+            </div>
+        </nav>
+
+        <main>
+            <div id="tab-intro" class="tab-content active">
+                <section class="content-section prose-custom">
+                    <h2>I. 引言：贾府兴衰与人物关系网</h2>
+                    <p>《红楼梦》作为中国古典文学的巅峰之作，以贾、史、王、薛四大家族的兴衰为主线，展现了封建社会末期的世态人情。故事背景围绕这四大家族展开，其中贾家作为四大家族之首，其宁国府和荣国府是故事的核心舞台。这四大家族的财富与权势，通过民间广为流传的“护官符”得以形象体现：</p>
+                    <blockquote>“贾不假，白玉为堂金作马。阿房宫，三百里，住不下金陵一个史。东海缺少白玉床，龙王来请金陵王。丰年好大雪，珍珠如土金如铁。”</blockquote>
+                    <p>这部作品中，人物数量庞大，有姓名称谓的达732人，无姓名称谓的243人，合计975人。这些人物之间关系错综复杂，互相指婚、互相勾结的现象普遍存在，充分表达了“一荣俱荣一损俱损”的必然。因此，对《红楼梦》人物关系的研究，不仅仅是梳理家族谱系，更重要的是深入揭示封建社会的家族伦理、权力结构、社会阶层互动及其对个体命运的深远影响。</p>
+                    <p>“护官符”作为开篇的引子，其诗句以暗语形式直接点出四大家族的显赫地位和巨大财富。这种叙事手法，从一开始就预示了这些家族的命运将是小说叙事的核心。其末句“丰年好大雪，珍珠如土金如铁”中的“雪”字，不仅谐音薛家，更深层地暗示了“盛极必衰”的悲剧结局。这表明作者从一开始就设定了家族由盛到衰的叙事框架，人物关系的变化将是这一衰落过程的具体体现。</p>
+                    <p>贾府内部的“亲疏腐败”和“等级腐败”现象，以及“互相指婚互相勾结”的特点，揭示了家族关系的本质并非纯粹的血缘或情感，而是权力与利益的联盟。这种基于功利的关系结构，虽然在表面上维持了家族的繁荣，但其内在的矛盾和不公（如嫡庶之别、主仆压迫）必然导致信任的瓦解和最终的崩溃，使得“一荣俱荣一损俱损”成为一种宿命般的预言。</p>
+                    <p>本应用旨在通过梳理《红楼梦》中的主要人物关系、家族结构、关键事件及其深层寓意，帮助读者更清晰地理解这部伟大作品的丰富内涵。</p>
+                </section>
+            </div>
+
+            <div id="tab-jia-clan" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>II. 贾府宗族血缘与婚姻关系</h2>
+                    <p>贾家由宁国公贾演和荣国公贾源兄弟二人开创，他们凭借赫赫战功成为当朝的开国元勋。贾府的族谱代际清晰，第一代为“演”、“源”；第二代为“代”字辈；第三代为“敷”、“赦”、“政”、“敬”、“敏”；第四代为“玉”字辈；第五代为“草”字辈。本章节将详细介绍宁国府与荣国府的人物谱系，以及贾、史、王、薛四大家族之间错综复杂的联姻网络。</p>
+                    <h3>宁国府人物谱系与主要人物关系</h3>
+                    <p>宁国公贾演去世后，其长子贾代化继承爵位。贾代化膝下有二子，长子贾敷早夭，次子贾敬继承爵位。然而，贾敬此人一心沉迷修道，其儿子贾珍成为宁国府的实际掌控者。贾珍荒淫无耻，贪婪成性，导致宁国府在他的手中变得乌烟瘴气，一塌糊涂。贾珍的妻子是尤氏，他与原配夫人生有一子贾蓉，而贾蓉的妻子正是金陵十二钗之一的秦可卿。此外，贾珍的妹妹是贾家四小姐惜春。宁国府的故事主要围绕在第四代和第五代展开。</p>
+
+                    <h3>荣国府人物谱系与主要人物关系</h3>
+                    <p>荣国公贾源去世后，其长子贾代善继承爵位，贾代善娶史家大小姐为妻，即贾府的老祖宗贾母。贾母育有二子四女：长子贾赦，次子贾政，以及最受贾母疼爱的小女儿贾敏。贾敏后来嫁给扬州巡盐御史林如海，他们的女儿便是林黛玉。</p>
+                    <p>贾赦与原配夫人生有一子名叫贾琏，贾琏的妻子是王熙凤。邢夫人没有子嗣，贾赦与小妾生有贾家二小姐迎春，贾赦还有一个庶出的次子贾琮。贾政有三房妻妾，正妻是王夫人，妾是赵姨娘和周姨娘。贾政和王夫人育有两子一女：长子贾珠早亡，只留下妻子李纨和幼子贾兰；次子是贾宝玉；长女是贾家大小姐贾元春。贾政和赵姨娘又有一子一女，女儿是贾家三小姐贾探春，儿子是贾环。荣国府的故事主要围绕在第三代和第四代展开。</p>
+
+                    <h3>贾史王薛四大家族联姻网络</h3>
+                    <p>贾史王薛四大家族之间存在着紧密的联姻网络。贾家与史家通过贾代善娶史家大小姐（贾母）建立联系，贾母的侄孙女是史湘云。贾家与王家则通过贾政之妻王夫人，以及贾琏之妻王熙凤（王夫人的侄女）联结。王夫人之妹是薛姨妈，因此薛宝钗是贾宝玉的姨表姐，薛蟠是贾宝玉的姨表兄。薛宝钗最终嫁给贾宝玉，进一步巩固了贾薛两家的姻亲关系。</p>
+                    <p>王家在四大家族中扮演了重要角色。王熙凤的父亲是王家长子，王子腾是王家次子。王子腾官职显赫，最终荣升内阁大学士。四大家族在第三代之后之所以能维持风生水起，全靠着王子腾手中的实权。然而，当王子腾突然暴毙后，显赫一时的四大家族立刻分崩离析。</p>
+
+                    <h3>贾府主要人物血缘关系图表</h3>
+                    <p>下表直观地展示了贾府各主要人物的辈分、所属分支以及核心的血缘和婚姻联系，为理解他们之间的复杂关系提供了基础。</p>
+                    <div class="table-container my-6">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>人物姓名</th>
+                                    <th>所属府邸</th>
+                                    <th>身份/辈分</th>
+                                    <th>主要亲属关系</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-200">
+                                <tr><td>贾演</td><td>宁国府</td><td>第一代</td><td>宁国公，贾源之兄</td></tr>
+                                <tr><td>贾源</td><td>荣国府</td><td>第一代</td><td>荣国公，贾演之弟</td></tr>
+                                <tr><td>贾代化</td><td>宁国府</td><td>第二代</td><td>贾演长子，贾敬之父</td></tr>
+                                <tr><td>贾代善</td><td>荣国府</td><td>第二代</td><td>贾源长子，贾母之夫，贾赦、贾政、贾敏之父</td></tr>
+                                <tr><td>贾敬</td><td>宁国府</td><td>第三代</td><td>贾代化次子，贾珍、贾惜春之父</td></tr>
+                                <tr><td>贾赦</td><td>荣国府</td><td>第三代</td><td>贾代善长子，贾琏、贾迎春、贾琮之父</td></tr>
+                                <tr><td>贾政</td><td>荣国府</td><td>第三代</td><td>贾代善次子，贾元春、贾珠、贾宝玉、贾探春、贾环之父</td></tr>
+                                <tr><td>贾敏</td><td>荣国府</td><td>第三代</td><td>贾代善幺女，林黛玉之母</td></tr>
+                                <tr><td>贾珍</td><td>宁国府</td><td>第四代</td><td>贾敬之子，贾蓉之父</td></tr>
+                                <tr><td>贾琏</td><td>荣国府</td><td>第四代</td><td>贾赦之子，王熙凤之夫</td></tr>
+                                <tr><td>贾宝玉</td><td>荣国府</td><td>第四代</td><td>贾政次子，薛宝钗之夫</td></tr>
+                                <tr><td>贾元春</td><td>荣国府</td><td>第四代</td><td>贾政长女，贾宝玉同胞姐</td></tr>
+                                <tr><td>贾迎春</td><td>荣国府</td><td>第四代</td><td>贾赦之女，庶出</td></tr>
+                                <tr><td>贾探春</td><td>荣国府</td><td>第四代</td><td>贾政之女，赵姨娘之女，庶出</td></tr>
+                                <tr><td>贾惜春</td><td>宁国府</td><td>第四代</td><td>贾敬之女，贾珍之妹</td></tr>
+                                <tr><td>贾母 (史太君)</td><td>荣国府</td><td>第二代</td><td>贾代善之妻，贾赦、贾政、贾敏之母</td></tr>
+                                <tr><td>林黛玉</td><td>林家/荣国府</td><td>第四代</td><td>林如海、贾敏之女，贾宝玉舅表妹</td></tr>
+                                <tr><td>王夫人</td><td>王家/荣国府</td><td>第三代</td><td>贾政之妻，贾元春、贾宝玉之母</td></tr>
+                                <tr><td>王熙凤</td><td>王家/荣国府</td><td>第四代</td><td>贾琏之妻</td></tr>
+                                <tr><td>薛宝钗</td><td>薛家/荣国府</td><td>第四代</td><td>薛姨妈之女，贾宝玉之妻</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <div id="tab-core-figures" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>III. 核心人物关系深度剖析</h2>
+                    <p>《红楼梦》的魅力在于其塑造了众多栩栩如生的人物形象。本章将聚焦于小说中最核心的几位人物：贾宝玉、林黛玉、薛宝钗、贾母和王熙凤，深入剖析他们之间的情感纠葛、亲情纽带与权力关系。</p>
+                    <h3>贾宝玉、林黛玉、薛宝钗的爱情悲剧与三角关系</h3>
+                    <p>贾宝玉、林黛玉、薛宝钗之间的“宝黛钗”三角关系是《红楼梦》的核心情感线索。宝黛之间的“木石前盟”是精神上的高度契合，追求超越世俗的真情。而宝玉与宝钗的“金玉良缘”则更多代表了家族利益和现实考量。黛玉的灵气脱俗、多愁善感与宝钗的品格高洁、理性务实形成了鲜明对比。这场爱情悲剧不仅是个人情感的纠葛，更是不同人生哲学与价值观的碰撞，最终以黛玉早逝、宝玉出家、宝钗独守空闺的悲剧结局告终。</p>
+
+                    <h3>贾母与主要人物的亲情纽带</h3>
+                    <p>贾母作为荣国府的最高掌权者和精神核心，对贾宝玉的溺爱、对林黛玉的疼惜是贾府亲情的重要体现。她与鸳鸯等丫鬟之间也存在深厚的主仆情谊。然而，贾母在家族管理上的某些“渎职”行为，如对儿孙辈一些劣迹的“睁只眼闭只眼”，也在一定程度上纵容了家族内部的腐败，为贾府的衰败埋下了伏笔。</p>
+
+                    <h3>王熙凤的权力网络与家族管理</h3>
+                    <p>王熙凤是贾府的实际大管家，以其“杀伐决断”的魄力和出色的理家才能著称。她深得贾母和王夫人的信任，在贾府内外建立了庞大的权力网络。从“协理宁国府”到“弄权铁槛寺”，王熙凤展现了其卓越的才干和强烈的权力欲。然而，她贪婪敛财、心狠手辣的一面也使其成为加速贾府败亡的重要推手。王熙凤的“男性气质”与贾宝玉的“女性气质”形成了有趣的对比，共同挑战了封建社会的传统性别规范。</p>
+
+                    <h3>核心人物（宝黛钗凤贾母）关系速览表</h3>
+                    <p>下表简明扼要地呈现了五位核心人物的关键信息，帮助读者快速把握他们的主要特征和在家族中的作用。</p>
+                    <div class="table-container my-6">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>人物姓名</th>
+                                    <th>血缘关系（与贾府核心成员）</th>
+                                    <th>婚姻关系</th>
+                                    <th>主要性格特点</th>
+                                    <th>在家族中的核心作用</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-200">
+                                <tr><td>贾宝玉</td><td>贾政与王夫人之子</td><td>薛宝钗之夫</td><td>多情、叛逆、厌恶仕途</td><td>小说核心，反叛象征</td></tr>
+                                <tr><td>林黛玉</td><td>贾敏之女，贾政外甥女</td><td>无</td><td>灵气脱俗、多愁善感、才华横溢</td><td>爱情悲剧主角，“木石前盟”</td></tr>
+                                <tr><td>薛宝钗</td><td>薛姨妈之女，王夫人外甥女</td><td>贾宝玉之妻</td><td>品格高洁、端庄大方、理性务实</td><td>“金玉良缘”，世俗价值观代表</td></tr>
+                                <tr><td>王熙凤</td><td>王夫人侄女</td><td>贾琏之妻</td><td>聪明干练、泼辣狠毒、权力欲强</td><td>贾府实际掌权者，权力斗争中心</td></tr>
+                                <tr><td>贾母</td><td>史家大小姐，贾代善之妻</td><td>贾代善之妻</td><td>享乐、慈爱（对宝黛）、精明、管理有失</td><td>贾府最高权威，家族精神核心</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="llm-section">
+                        <h3 class="text-rose-700">✨人物关系解读✨</h3>
+                        <p class="text-sm text-stone-600 mb-3">选择两位人物，让AI为您解读他们之间的关系。</p>
+                        <div class="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-3">
+                            <select id="char1Select" class="p-2 border border-stone-300 rounded-md flex-grow">
+                                <option value="">选择人物一</option>
+                                <option value="贾宝玉">贾宝玉</option>
+                                <option value="林黛玉">林黛玉</option>
+                                <option value="薛宝钗">薛宝钗</option>
+                                <option value="王熙凤">王熙凤</option>
+                                <option value="贾母">贾母</option>
+                                <option value="贾琏">贾琏</option>
+                                <option value="晴雯">晴雯</option>
+                                <option value="袭人">袭人</option>
+                                <option value="鸳鸯">鸳鸯</option>
+                                <option value="平儿">平儿</option>
+                                <option value="紫鹃">紫鹃</option>
+                                <option value="贾政">贾政</option>
+                                <option value="王夫人">王夫人</option>
+                                <option value="史湘云">史湘云</option>
+                            </select>
+                            <span class="text-stone-600">与</span>
+                            <select id="char2Select" class="p-2 border border-stone-300 rounded-md flex-grow">
+                                <option value="">选择人物二</option>
+                                <option value="贾宝玉">贾宝玉</option>
+                                <option value="林黛玉">林黛玉</option>
+                                <option value="薛宝钗">薛宝钗</option>
+                                <option value="王熙凤">王熙凤</option>
+                                <option value="贾母">贾母</option>
+                                <option value="贾琏">贾琏</option>
+                                <option value="晴雯">晴雯</option>
+                                <option value="袭人">袭人</option>
+                                <option value="鸳鸯">鸳鸯</option>
+                                <option value="平儿">平儿</option>
+                                <option value="紫鹃">紫鹃</option>
+                                <option value="贾政">贾政</option>
+                                <option value="王夫人">王夫人</option>
+                                <option value="史湘云">史湘云</option>
+                            </select>
+                            <button onclick="getCharacterRelationship()" class="bg-rose-600 text-white px-4 py-2 rounded-md hover:bg-rose-700 transition-colors flex-shrink-0">
+                                解读关系
+                                <span id="charRelateSpinner" class="loading-spinner hidden"></span>
+                            </button>
+                        </div>
+                        <div id="characterRelationshipOutput" class="llm-output"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="tab-master-servant" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>IV. 主仆关系：等级、互动与命运</h2>
+                    <p>贾府的主奴体系等级森严，但并非完全是冷酷的压迫，也夹杂着一定的“亲情性”。本章将探讨贾府主奴体系的特点，并重点分析大丫鬟群体（袭人、晴雯、鸳鸯、平儿、紫鹃）与主子的复杂互动及其各自的悲剧命运。</p>
+                    <h3>贾府主奴体系的特点与等级划分</h3>
+                    <p>贾府的仆人分为“正经主子”和“半主子”，奴才内部也分为不同等级。相互称谓常带有亲属色彩，日常互动中也不乏温情场景。然而，这种温情掩盖不了奴才“生命犹如草芥”的本质和主子严酷的惩戒。奴才的来源多样，包括家生子和被卖入府的丫鬟。</p>
+
+                    <h3>大丫鬟群像与主子的互动及命运</h3>
+                    <p>大丫鬟们是连接主子与仆从阶层的关键群体，她们的命运是贾府衰败的缩影。</p>
+                    <ul>
+                        <li><strong>袭人：</strong>贾宝玉的“准姨娘”，忠心照顾宝玉，但也藏有私心，最终改嫁蒋玉菡。</li>
+                        <li><strong>晴雯：</strong>容貌出众，性格刚烈，追求平等，具有反奴性，最终含冤而死。</li>
+                        <li><strong>鸳鸯：</strong>贾母的贴身丫鬟，心地善良，性格高贵，为拒婚贾赦而抗争，贾母逝后自尽。</li>
+                        <li><strong>平儿：</strong>王熙凤的心腹，宽厚待人，在夹缝中求生存，命运不由己。</li>
+                        <li><strong>紫鹃：</strong>林黛玉的忠诚丫鬟，情同姐妹，黛玉死后看破红尘，随惜春出家。</li>
+                    </ul>
+                    <p>这些大丫鬟各具鲜明个性，她们的抗争与悲剧结局深刻揭示了封建社会下女性的生存困境和人性的复杂性。</p>
+                    <h3>大丫鬟（袭人、晴雯、鸳鸯、平儿、紫鹃）与主子关系及命运对比表</h3>
+                    <p>下表系统梳理了五位大丫鬟的关键信息，便于比较她们在贾府中的挣扎与命运。</p>
+                    <div class="table-container my-6">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>丫鬟姓名</th>
+                                    <th>主要服侍主子</th>
+                                    <th>性格特点</th>
+                                    <th>在小说中的作用</th>
+                                    <th>最终命运</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-200">
+                                <tr><td>袭人</td><td>贾宝玉</td><td>温和、守礼、有心计</td><td>规劝宝玉，影响王夫人评价</td><td>改嫁蒋玉菡</td></tr>
+                                <tr><td>晴雯</td><td>贾宝玉</td><td>火爆、直率、高傲、反奴性</td><td>追求平等，激起反抗精神</td><td>含冤而死</td></tr>
+                                <tr><td>鸳鸯</td><td>贾母</td><td>善良、高贵、忠心</td><td>挑战传统，揭示奴才心态</td><td>贾母逝世后上吊自杀</td></tr>
+                                <tr><td>平儿</td><td>王熙凤、贾琏</td><td>中立、周全、宽厚</td><td>协助王熙凤，处理复杂关系</td><td>身份仍是妾侍，命运不由己</td></tr>
+                                <tr><td>紫鹃</td><td>林黛玉</td><td>兰心慧性、勇敢、深情</td><td>推动情节，见证悲剧</td><td>林黛玉逝世后跟随惜春出家</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                     <h3>主要丫鬟命运归宿图表</h3>
+                    <p>下图展示了小说中几位重要丫鬟最终的命运归宿，直观反映了她们在封建大家庭中的悲剧性结局。</p>
+                    <div class="chart-container my-6">
+                        <canvas id="maidsFatesChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <div id="tab-power-society" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>V. 权力、社会阶层与人物命运</h2>
+                    <p>《红楼梦》深刻揭示了封建宗法制度下的家族权力斗争，以及社会阶层对人物命运的深远影响。本章将探讨贾府内部的权力腐败、嫡庶之别对个体命运的塑造，以及王熙凤、贾宝玉等角色在性别角色上的突破与对传统观念的挑战。</p>
+                    <h3>封建宗法制度下的家族权力斗争</h3>
+                    <p>贾府是一个等级森严的贵族之家，权力高度集中，导致了严重的内部腐败和不平等竞争。“亲疏腐败”和“等级腐败”盛行，贾母等高层管理者的渎职以及监督机制的缺乏，使得权力滥用成为常态，加速了家族的衰败。</p>
+
+                    <h3>社会阶层对人物命运的深远影响</h3>
+                    <p>“嫡”、“庶”、“长”、“幼”等封建思想根深蒂固。贾环与贾宝玉的命运对比，赵姨娘的卑微地位与悲惨结局，迎春不幸的买卖婚姻，都淋漓尽致地揭露了封建家庭制度的残酷与不公。这些个人悲剧映衬了时代悲剧和封建制度的腐朽。</p>
+
+                    <h3>性别角色突破与传统观念的挑战（以王熙凤、贾宝玉为例）</h3>
+                    <p>王熙凤的“男性气质”和贾宝玉的“女性气质”是对传统性别角色的深刻反叛。王熙凤以其“杀伐决断”的理家才能挑战了“女子无才便是德”的观念。贾宝玉则厌恶男性世界的功名利禄，亲近纯洁的女儿世界，其行为反叛了传统男性社会期待。这种“双性气质”的塑造，体现了作者对人性自然本真和超越性别束缚的追求。</p>
+                </section>
+            </div>
+
+            <div id="tab-key-events" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>VI. 关键事件对人物关系的冲击</h2>
+                    <p>小说中的几个关键事件，如同催化剂，极大地冲击了贾府的人物关系，并加速了家族的衰败。本章将分析元妃省亲、抄检大观园和黛死钗嫁这三大事件的深远影响。</p>
+                    <h3>元妃省亲：荣耀下的冷寂与家族危机</h3>
+                    <p>元妃省亲是贾府“烈火烹油、鲜花着锦之盛”的巅峰，但也带来了巨大的经济消耗和政治压力。元妃内心的“冷寂”与外部的欢庆形成对比，凸显了省亲的虚假繁荣。贾政在省亲中表现出的“君臣之义胜过父女之情”，以及大观园的修建，都对后续故事发展产生了重要影响。这场“虚热闹”不仅是贾府经济的转折点，也象征着亲情在皇权下的异化。</p>
+
+                    <h3>抄检大观园：理想世界的破灭与内部信任瓦解</h3>
+                    <p>抄检大观园是贾府内部矛盾白热化的标志，是“世俗世界”对“理想世界”的侵害。绣春囊的出现引发了这场风波，直接导致了晴雯等丫鬟的悲剧，以及园内人物的离散。此事件彻底瓦解了贾府内部的信任基础，加速了其“自杀自灭”的进程，预示了家族由内而外的崩溃。</p>
+
+                    <h3>黛死钗嫁：爱情的终结与家族衰败的缩影</h3>
+                    <p>“黛死钗嫁”是宝黛爱情悲剧的高潮，宣告了“木石前盟”的失败。林黛玉的凄凉离世与薛宝钗的热闹婚礼形成强烈对比，深刻揭示了在家族利益和世俗观念面前，个体命运的无力与牺牲。这一事件对贾宝玉造成了巨大冲击，促使其最终看破红尘，也象征着贾府政治、经济、礼法效力的全面丧失。</p>
+
+                    <div class="llm-section">
+                        <h3 class="text-rose-700">✨事件影响分析✨</h3>
+                        <p class="text-sm text-stone-600 mb-3">选择一个关键事件，让AI为您分析其影响。</p>
+                        <div class="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-3">
+                            <select id="eventSelect" class="p-2 border border-stone-300 rounded-md flex-grow">
+                                <option value="">选择事件</option>
+                                <option value="元妃省亲">元妃省亲</option>
+                                <option value="抄检大观园">抄检大观园</option>
+                                <option value="黛死钗嫁">黛死钗嫁</option>
+                            </select>
+                            <button onclick="getEventImpact()" class="bg-rose-600 text-white px-4 py-2 rounded-md hover:bg-rose-700 transition-colors flex-shrink-0">
+                                分析影响
+                                <span id="eventImpactSpinner" class="loading-spinner hidden"></span>
+                            </button>
+                        </div>
+                        <div id="eventImpactOutput" class="llm-output"></div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="tab-symbolism" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>VII. 人物关系的深层寓意与象征</h2>
+                    <p>《红楼梦》的人物关系不仅构建了复杂的故事网络，更承载了深刻的文化寓意和象征意义。本章将探讨孤女形象的文化隐喻，以及小说如何通过人物关系对社会现实进行批判与反思。</p>
+                    <h3>孤女形象的文化隐喻</h3>
+                    <p>林黛玉、薛宝钗、史湘云、妙玉、香菱等多位孤女形象，隐喻了封建社会中女性的弱势地位和孤苦无依的命运。她们的遭遇反映了社会伦理道德对女性的束缚和压迫，其命运与家族兴衰紧密相连，预示着整个封建社会的衰落。</p>
+
+                    <h3>人物关系对社会现实的批判与反思</h3>
+                    <p>小说通过贾府的衰败，深刻批判了封建贵族阶级的堕落腐朽。宝黛爱情追求人性自由，反对仕途经济，具有进步意义。作者通过丫鬟形象肯定女性的自主意识，并通过对“情”的推崇，特别是“意淫”的独特诠释，超越了儒家礼教的束缚，强调了人与人之间平等、互爱的纯真情感。人物命名中的“雪”字意象，也深层象征着悲剧、纯洁与毁灭，预示着人物和家族的宿命。</p>
+                </section>
+            </div>
+
+            <div id="tab-conclusion" class="tab-content">
+                <section class="content-section prose-custom">
+                    <h2>VIII. 结论：错综复杂的人间悲剧</h2>
+                    <p>《红楼梦》以其宏大而精微的人物关系网，深刻展现了贾府乃至整个封建社会的兴衰变迁。血缘、婚姻、主仆、友情、爱情等多元关系交织，既是家族繁荣的纽带，也是内部矛盾和权力斗争的温床。贾府的兴盛依赖于四大家族的联姻网络和外部政治权力，但这种联盟的脆弱性，以及家族内部管理上的渎职和腐败，最终导致了其由盛转衰的必然。</p>
+                    <p>关键事件如元妃省亲、抄检大观园、黛死钗嫁，如同加速器，将家族推向深渊，也深刻塑造了人物的性格与命运。这些事件不仅揭示了亲情在皇权面前的异化、家族内部信任的瓦解，更将个体命运在家族利益和世俗观念面前的无力与牺牲展现得淋漓尽致。</p>
+                    <p>小说通过“孤女”形象的悲剧、王熙凤和贾宝玉性别角色的突破，以及对“情”的哲学探索，超越了简单的叙事。它对封建社会的伦理道德、社会阶层和人性进行了深刻的批判与反思，展现了作者对人性自然本真和理想社会关系的向往。</p>
+                    <p>《红楼梦》的人物关系不仅是故事的骨架，更是作者曹雪芹对“千红一哭，万艳同悲”人间悲剧的深沉慨叹。其复杂性与深层寓意，使得这部作品至今仍引人深思，成为中华文化宝库中一颗璀璨的明珠。</p>
+                </section>
+            </div>
+        </main>
+
+        <footer class="mt-12 text-center text-sm text-stone-500">
+            <p>&copy; <span id="currentYear"></span> 《红楼梦》人物关系互动探索。基于报告内容生成。</p>
+        </footer>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+
+            const buttons = document.querySelectorAll('.nav-button');
+            buttons.forEach(button => {
+                button.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+        }
+
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        // Chart.js for Maids' Fates
+        const maidsFatesCtx = document.getElementById('maidsFatesChart');
+        if (maidsFatesCtx) {
+            new Chart(maidsFatesCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['袭人', '晴雯', '鸳鸯', '平儿', '紫鹃'],
+                    datasets: [{
+                        label: '丫鬟命运归宿类别数量',
+                        data: [
+                            1, // 袭人: 嫁出/尘缘未了
+                            2, // 晴雯: 悲剧身亡
+                            2, // 鸳鸯: 悲剧身亡
+                            3, // 平儿: 存活但不幸
+                            4  // 紫鹃: 出家/寻求解脱
+                        ],
+                        backgroundColor: [
+                            'rgba(255, 159, 64, 0.7)', // 嫁出/尘缘未了 (Orange)
+                            'rgba(255, 99, 132, 0.7)', // 悲剧身亡 (Red)
+                            'rgba(255, 99, 132, 0.7)', // 悲剧身亡 (Red)
+                            'rgba(255, 205, 86, 0.7)', // 存活但不幸 (Yellow)
+                            'rgba(75, 192, 192, 0.7)'  // 出家/寻求解脱 (Teal)
+                        ],
+                        borderColor: [
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 205, 86, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y', // Horizontal bar chart for better label readability
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const labels = ['无', '嫁出/尘缘未了', '悲剧身亡', '存活但不幸', '出家/寻求解脱'];
+                                    return labels[value] || '';
+                                },
+                                stepSize: 1,
+                                color: '#4b5563' // text-stone-600
+                            },
+                            title: {
+                                display: true,
+                                text: '命运归宿类别',
+                                color: '#4b5563'
+                            }
+                        },
+                        y: {
+                             ticks: {
+                                color: '#4b5563'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // Hiding legend as data is categorical and colors are distinct
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const fateCategories = ['嫁出/尘缘未了', '悲剧身亡', '存活但不幸', '出家/寻求解脱'];
+                                    if (context.parsed.x !== null) {
+                                        // The data array [1,2,2,3,4] maps to indices [0,1,1,2,3] of fateCategories
+                                        // Xiren (1) -> fateCategories[0]
+                                        // Qingwen (2) -> fateCategories[1]
+                                        // Yuanyang (2) -> fateCategories[1]
+                                        // Ping'er (3) -> fateCategories[2]
+                                        // Zijuan (4) -> fateCategories[3]
+                                        label += fateCategories[context.parsed.x -1];
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    // Ensure labels are not cut off
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    }
+                }
+            });
+        } else {
+            console.error("Canvas element for maids' fates chart not found.");
+        }
+
+        // LLM Integration Functions
+        async function getCharacterRelationship() {
+            const char1 = document.getElementById('char1Select').value;
+            const char2 = document.getElementById('char2Select').value;
+            const outputDiv = document.getElementById('characterRelationshipOutput');
+            const spinner = document.getElementById('charRelateSpinner');
+
+            if (!char1 || !char2) {
+                outputDiv.textContent = '请选择两位人物。';
+                return;
+            }
+            if (char1 === char2) {
+                outputDiv.textContent = '请选择两位不同的人物。';
+                return;
+            }
+
+            outputDiv.textContent = '正在生成中，请稍候...';
+            spinner.classList.remove('hidden');
+
+            const prompt = `请详细解释《红楼梦》中${char1}和${char2}之间的关系，包括他们的血缘/婚姻/主仆关系，以及他们在故事中的主要互动和对彼此命运的影响。`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    outputDiv.textContent = text;
+                } else {
+                    outputDiv.textContent = '未能获取到结果，请重试。';
+                }
+            } catch (error) {
+                console.error('Error fetching character relationship:', error);
+                outputDiv.textContent = '请求失败，请检查网络或稍后再试。';
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        async function getEventImpact() {
+            const event = document.getElementById('eventSelect').value;
+            const outputDiv = document.getElementById('eventImpactOutput');
+            const spinner = document.getElementById('eventImpactSpinner');
+
+            if (!event) {
+                outputDiv.textContent = '请选择一个事件。';
+                return;
+            }
+
+            outputDiv.textContent = '正在生成中，请稍候...';
+            spinner.classList.remove('hidden');
+
+            const prompt = `请详细分析《红楼梦》中‘${event}’这一事件对贾府人物关系和家族命运产生的具体影响。`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    outputDiv.textContent = text;
+                } else {
+                    outputDiv.textContent = '未能获取到结果，请重试。';
+                }
+            } catch (error) {
+                console.error('Error fetching event impact:', error);
+                outputDiv.textContent = '请求失败，请检查网络或稍后再试。';
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
